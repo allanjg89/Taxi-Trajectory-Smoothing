@@ -363,9 +363,9 @@ class poly3Fit:
 		t2:number
 		
 	The following function does the fitting as described by smoothTrajectory
-	by solving for the coeficients of the polynomial x(t) through use of algorythm 1
+	by solving for the coeficients of the polynomial x(t) through use of algorithm 1
 
-	For Algorythm 1:
+	For algorithm 1:
 		
 		Consider points p0, p1, and p2
 
@@ -380,7 +380,7 @@ class poly3Fit:
 	B = A*X
 	'''	
 	@classmethod	
-	def algorythm1(cls, x0,x1,x2,t0,t1,t2):
+	def algorithm1(cls, x0,x1,x2,t0,t1,t2):
 		A = [
 				[t0,t0**2/2,t0**3/6],\
 				[t1,t1**2/2,t1**3/6],\
@@ -401,10 +401,10 @@ class poly3Fit:
 			
 	The following function does the fitting as described by smoothTrajectory
 	by solving for the coeficients of the polynomials x(t), v(t) and a(t) 
-	through use of algorythm 2
+	through use of algorithm 2
 
 
-	For Algorythm 2:
+	For algorithm 2:
 		
 		Consider points p0, and p1
 
@@ -418,7 +418,7 @@ class poly3Fit:
 	B = A*X
 	'''	
 	@classmethod 
-	def algorythm2(cls,x0,x1,v1,a1,t1):
+	def algorithm2(cls,x0,x1,v1,a1,t1):
 		
 		
 		A = [
@@ -508,7 +508,7 @@ class poly8Fit:
 		t1:number
 	'''	
 	@classmethod	
-	def algorythm3(cls, x0,x1,v0,v1,a0,a1,t0,t1):
+	def algorithm3(cls, x0,x1,v0,v1,a0,a1,t0,t1):
 		#tOff = 0
 		#ref = 0
 		#prevT0 = t0 - tOff
@@ -571,12 +571,12 @@ Parameters:
 	
 	keyword arguments:
 		desiredDeltaT:number; desired time difference between two points
-		algorythm: string; "alg1" or "alg2" for algorythm 1 an 2 respectively
+		algorithm: string; "alg1" or "alg2" for algorithm 1 an 2 respectively
 		match: string: "match" or "no"; if set to "match" the first entries in 
 			   the x and y position in every fit will be set to x0 and y0 respectively
 	
 	calling example:
-		smoothTaxi2Fit = smoothTrajectory(taxi,desiredDeltaT=1,algorythm ="alg2", match = "yes" )
+		smoothTaxi2Fit = smoothTrajectory(taxi,desiredDeltaT=1,algorithm ="alg2", match = "yes" )
 
 Returns a new taxi object
 
@@ -589,7 +589,7 @@ The fundemental assumptions are:
 	v(t) = v0 + a0*t + (c/2)*t^2
 	x(t) = x0 + v0*t + (a0/2)*t^2 + (c/6)*t^3
 	
-Algorythm 1:
+algorithm 1:
 	
 	To smooth the trajectory we will fit every 3 points to a cubic funtion in form of x(t).
 	As an exampe consider points p1, p2, p3, and p4:
@@ -604,7 +604,7 @@ Algorythm 1:
 	adhere to a nice function. Thus at face value it seems logical to refit
 	at every new point
 	
-Algorythm 2:
+algorithm 2:
 	To smooth the trajectory we will fit every 2 points. We will solve for the cofficients
 	to the cubic funtion x(t), by solving the 3 sets of equations above using the points as 
 	boundary conditions.
@@ -615,9 +615,9 @@ Algorythm 2:
 	v2 = v1 + a1*t1+ (c/2)*t1^2
 	x2 = x1 + v1*t1 + (a1/2)*dt1^2 + (c/6)*dt1^3
 	
-Algorythm 3:
+algorithm 3:
 	
-	Algorythm 3  is an atempt to fit the highest degree polynomial given
+	algorithm 3  is an atempt to fit the highest degree polynomial given
 	all the data (ie boundary conditions) we have at our disposal for 2 points.
 		
 	NOTE: For very large values of time the numerical limits of computing do not allow 
@@ -663,10 +663,10 @@ def smoothTrajectory(taxi,**kwargs):
 	else:
 		match = "no"
 		
-	if "algorythm" in kwargs:
-		algorythm = kwargs["algorythm"]
+	if "algorithm" in kwargs:
+		algorithm = kwargs["algorithm"]
 	else:
-		algorythm = "alg1"
+		algorithm = "alg1"
 
 	#In the case that the desired time step is greater that or 
 	#equal to the maximum time step the function simply returns 
@@ -681,28 +681,28 @@ def smoothTrajectory(taxi,**kwargs):
 			try:
 				if i<len(x)-3:
 					totT = t[i]
-					if algorythm == "alg1":
-						funcsx = poly3Fit.algorythm1(x[i],x[i+1],x[i+2],t[i],t[i+1],t[i+2])
-						funcsy = poly3Fit.algorythm1(y[i],y[i+1],y[i+2],t[i],t[i+1],t[i+2])
-					elif algorythm == "alg2":
+					if algorithm == "alg1":
+						funcsx = poly3Fit.algorithm1(x[i],x[i+1],x[i+2],t[i],t[i+1],t[i+2])
+						funcsy = poly3Fit.algorithm1(y[i],y[i+1],y[i+2],t[i],t[i+1],t[i+2])
+					elif algorithm == "alg2":
 						i +=2 #we are starting with the third element since the numerically 
 							  #computed acceleration is not well defined before that. 
 						totT = t[i]
-						funcsx = poly3Fit.algorythm2(x[i],x[i+1],vx[i+1],ax[i+1],t[i+1])
-						funcsy = poly3Fit.algorythm2(y[i],y[i+1],vy[i+1],ay[i+1],t[i+1])
-					elif algorythm == "alg3":
+						funcsx = poly3Fit.algorithm2(x[i],x[i+1],vx[i+1],ax[i+1],t[i+1])
+						funcsy = poly3Fit.algorithm2(y[i],y[i+1],vy[i+1],ay[i+1],t[i+1])
+					elif algorithm == "alg3":
 						i +=2 #we are starting with the third element since the numerically 
 							  #computed acceleration is not well defined before that. 
 						totT = t[i]
-						funcsx = poly8Fit.algorythm3(x[i],x[i+1],vx[i],vx[i+1],ax[i],ax[i+1],t[i],t[i+1])
-						funcsy = poly8Fit.algorythm3(y[i],y[i+1],vy[i],vy[i+1],ay[i],ay[i+1],t[i],t[i+1])
+						funcsx = poly8Fit.algorithm3(x[i],x[i+1],vx[i],vx[i+1],ax[i],ax[i+1],t[i],t[i+1])
+						funcsy = poly8Fit.algorithm3(y[i],y[i+1],vy[i],vy[i+1],ay[i],ay[i+1],t[i],t[i+1])
 					else:
-						raise Exception("Algorythm not properly specified. PLease specify:\n alg1, alg2, or alg3")
+						raise Exception("algorithm not properly specified. PLease specify:\n alg1, alg2, or alg3")
 				
 				count = 0
 				while (totT<t[i+1]):
 					if match == "yes" and count == 0: #a measure intended for the second 
-												   #algorythm to match the intial position point for 
+												   #algorithm to match the intial position point for 
 												   #each fit 
 						smoothX.append(x[i])
 						smoothY.append(y[i])
