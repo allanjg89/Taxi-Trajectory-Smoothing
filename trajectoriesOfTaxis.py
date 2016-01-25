@@ -11,10 +11,11 @@ from datetime import datetime
 import time
 import pdb
 import traceback
+from fitFunctions import *
 
 
 '''
-Paramters:
+Parameters:
 	taxiID:int
 	times: list of numbers: units in seconds
 	x: list of numbers: units in meters
@@ -155,7 +156,7 @@ class Taxi:
 			y = deltaLatitude * 40008000 / 360
 			
 	For Longitude:
-		There is dependece on latitude since the circumference of any crossection
+		There is dependence on latitude since the circumference of any cross section
 		at a given latitude is different. The circumference at the equator 
 		(latitude 0) is 40075160 meters. The 
 		The circumference of a circle at a given latitude will be proportional to the 
@@ -201,20 +202,20 @@ class Taxi:
 			2) t2 < t1 (decreasing time)
 			3) velocity is greater than some predefined velocity;
 			this condition would correspond to points that moved 
-			and errenous distance in s short amount of time.
+			and erroneous distance in s short amount of time.
 			4) acceleration is greater than some predefined value.
 			This is a bad point for analogous reasons to 3)
 
 			
 		The "bad" data point along with the data point right before
-		are witten to a file named badPointsForTaxi{taxiID}.txt.
-		The point right before is also witten becasue
-		the badpoint was determined to be bad only context to the 
+		are written to a file named badPointsForTaxi{taxiID}.txt.
+		The point right before is also written because
+		the bad point was determined to be bad only context to the 
 		point that came right before. Refer to the criteria for 
 		bad points right above.
 			
 		
-	The funtion returns a list of lists containing the derived 
+	The function returns a list of lists containing the derived 
 	and filtered quantities
 	'''
 	@classmethod		
@@ -329,240 +330,6 @@ class Taxi:
 		return taxiID,times,longitude,latitude
 	
 		
-'''
-Parameters:
-	x0: number; intitial point
-	A:list of numbers
-	B:list of numbers
-'''	
-class poly3Fit:
-	def __init__(self,x0,A,B):
-
-		'''
-		A try catch block is implemented here in the case
-		that a singuar matrix error arises
-		'''
-		try:
-			x = solve(np.array(A),np.array(B))
-		except Exception as err:
-			print err
-			raise Exception("Smoothing unsuccesful. Values not determinant.")
-		
-		self.x0 = x0
-		self.v0 = x[0]
-		self.a0 = x[1]
-		self.c = x[2]
-		
-	'''
-	Parameters:
-		x0:number
-		x1:number
-		x2:number
-		t0:number
-		t1:number
-		t2:number
-		
-	The following function does the fitting as described by smoothTrajectory
-	by solving for the coeficients of the polynomial x(t) through use of algorithm 1
-
-	For algorithm 1:
-		
-		Consider points p0, p1, and p2
-
-		   B					A				 X
-
-		|x0-x0|		|t0	  t0^2/2   t0^3/6|     |v0| 
-		|x1-x0| = 	|t1	  t1^2/2   t1^3/6|  *  |a0|
-		|x2-x0|		|t2	  t2^2/2   t2^3/6|	    |c|
-	  
-
-
-	B = A*X
-	'''	
-	@classmethod	
-	def algorithm1(cls, x0,x1,x2,t0,t1,t2):
-		A = [
-				[t0,t0**2/2,t0**3/6],\
-				[t1,t1**2/2,t1**3/6],\
-				[t2,t2**2/2,t2**3/6]
-			 ]
-	
-					
-		B = [0,x1-x0,x2-x0]
-		
-		return cls(x0,A,B)
-		
-	'''
-	Parameters:
-		x0:number
-		v1:number
-		a1:number
-		deltaT:number
-			
-	The following function does the fitting as described by smoothTrajectory
-	by solving for the coeficients of the polynomials x(t), v(t) and a(t) 
-	through use of algorithm 2
-
-
-	For algorithm 2:
-		
-		Consider points p0, and p1
-
-		   B					   A			 X
-
-		|x1-x0|		|t1	  t1^2/2   t1^3/6|     |v0| 
-		|v1|     = 	|0 	  t1       t1^2/2|  *  |a0|
-		|a1|		|0	  1        t1    |     |c|
-	  
-
-	B = A*X
-	'''	
-	@classmethod 
-	def algorithm2(cls,x0,x1,v1,a1,t1):
-		
-		
-		A = [
-			 [t1, t1**2/2, t1**3/6],\
-			 [1,  t1,      t1**2/2],\
-			 [0,  1,       t1     ]
-			]
-	
-					
-		B = [x1-x0,v1,a1]
-		
-		return cls(x0,A,B)
-
-		
-	def newD(self,dt):
-		return self.x0 + self.v0*dt + (self.a0/2.0)*dt**2 + (self.c/6.0)*dt**3
-		
-	def newV(self,dt):
-		return self.v0 + self.a0*dt + (self.c/2.0)*dt**2
-	
-	def newA(self,dt):
-		return self.a0 + self.c*dt
-		
-
-'''
-Parameters:
-	A:list of numbers
-	B:list of numbers
-	
-	
-	note that due to the limitations of numerical representaions very large values of t 
-	cannot be computed
-	
-	
-	
-In matrix form:
-	
-				B							                   A                                    X
-	
-	|0                        |   |t0        t0^{2}    t0^{3}    t0^{4}    t0^{5}    t0^{6}   |   |b|
-	|- a0*t0                  |   |t0^{2}/2  t0^{3}/3  t0^{4}/4  t0^{5}/5  t0^{6}/6  t0^{7}/7 |   |c|
-	|- v0*t0 - a0/2*t0        | = |t0^{3}/6  t0^{4}/12 t0^{5}/20 t0^{6}/30 t0^{7}/42 t0^{8}/56| * |d|
-	|a1 - a0                  |   |t1        t1^{2}    t1^{3}    t1^{4}    t1^{5}    t1^{6}   |   |e|
-	|v1 - v0 - a0*t1          |   |t1^{2}/2  t1^{3}/3  t1^{4}/4  t1^{5}/5  t1^{6}/6  t1^{7}/7 |   |f|
-	|x1 - x0 - v0*t1 - a0/2*t1|   |t1^{3}/6  t1^{4}/12 t1^{5}/20 t1^{6}/30 t1^{7}/42 t1^{8}/56|   |g|
-
-
-B = A*X
-'''	
-
-class poly8Fit:
-	def __init__(self, x0,v0,a0,A,B):
-	# __init__(self,ref,prevT0,x0,v0,a0,A,B):
-
-		'''
-		A try catch block is implemented here in the case
-		that a singuar matrix error arises
-		'''
-		
-		try:
-			x = solve(np.array(A),np.array(B))
-		except Exception as err:
-			print err
-			raise Exception("Smoothing unsuccesful. Values not determinant.")
-		
-		#self.ref = ref
-		#self.prevT0 = prevT0
-		self.x0 = x0
-		self.v0 = v0
-		self.a0 = a0
-		self.b= x[0]
-		self.c = x[1]
-		self.d = x[2]
-		self.e = x[3]
-		self.f = x[4]
-		self.g = x[5]
-		
-	'''
-	Parameters:
-		x0:number
-		x1:number
-		v0:number
-		v1:number
-		a0:number
-		a1:number
-		t0:number
-		t1:number
-	'''	
-	@classmethod	
-	def algorithm3(cls, x0,x1,v0,v1,a0,a1,t0,t1):
-		#tOff = 0
-		#ref = 0
-		#prevT0 = t0 - tOff
-		#prevT0 = 0
-		#t1 = t1-t0+tOff
-		#t0 = tOff
-		#initial = 0
-		
-		
-		A = [
-				[t0,       t0**2,    t0**3,    t0**4,    t0**5,     t0**6],\
-				[t0**2/2,  t0**3/3,  t0**4/4,  t0**5/5,  t0**6/6,   t0**7/7],\
-				[t0**3/6,  t0**4/12, t0**5/20, t0**6/30, t0**7/42,  t0**8/56],\
-				[t1,       t1**2,    t1**3,    t1**4,    t1**5,     t1**6],\
-				[t1**2/2,  t1**3/3,  t1**4/4,  t1**5/5,  t1**6/6,   t1**7/7],\
-				[t1**3/6,  t1**4/12, t1**5/20, t1**6/30, t1**7/42,  t1**8/56]			 ]
-	
-		
-		'''
-		B =[initial + ref,\
-			initial + ref - a0*t0,\
-			initial + ref - v0*t0 - a0/2*t0**2,\
-			a1 + ref - a0*t0,\
-			v1 + ref - v0 - a0*t1,\
-			x1 + ref - x0 - v0*t1 - a0/2*t1**2]
-		'''
-		
-		B =[0,\
-			0 - a0*t0,\
-			0 - v0*t0 - a0/2*t0**2,\
-			a1 - a0*t0,\
-			v1 - v0 - a0*t1,\
-			x1 - x0 - v0*t1 - a0/2*t1**2]
-
-		
-		return cls(x0,v0,a0,A,B)
-		#cls(ref,prevT0,x0,v0,a0,A,B)
-		
-			
-	def newD(self,t):
-		#t = t-self.prevT0
-		return self.x0 + self.v0*t +  self.a0/2*t**2 + self.b/6*t**3 + self.c/12*t**4 + self.d/20*t**5 +self.e/30*t**6 +self.f/42*t**7 + self.g/56*t**8
-		#return self.x0-self.ref + self.v0*t +  self.a0/2*t**2 + self.b/6*t**3 + self.c/12*t**4 + self.d/20*t**5 +self.e/30*t**6 +self.f/42*t**7 + self.g/56*t**8
-		
-	def newV(self,t):
-		#t = t-self.prevT0
-		return self.v0 + self.a0*t + self.b/2*t**2 + self.c/3*t**3 +self.d/4*t**4 +self.e/5*t**5 +self.f/6*t**6 + self.g/7*t**7
-		#return self.v0-self.ref + self.a0*t + self.b/2*t**2 + self.c/3*t**3 +self.d/4*t**4 +self.e/5*t**5 +self.f/6*t**6 + self.g/7*t**7
-	
-	def newA(self,t):
-		#t = t-self.prevT0
-		return  self.a0 + self.b*t + self.c*t**2 + self.d*t**3 + self.e*t**4 + self.f*t**5 + self.g*t**6
-		#return  self.a0-self.ref + self.b*t + self.c*t**2 + self.d*t**3 + self.e*t**4 + self.f*t**5 + self.g*t**6
-		
 		
 		
 '''
@@ -605,8 +372,8 @@ algorithm 1:
 	at every new point
 	
 algorithm 2:
-	To smooth the trajectory we will fit every 2 points. We will solve for the cofficients
-	to the cubic funtion x(t), by solving the 3 sets of equations above using the points as 
+	To smooth the trajectory we will fit every 2 points. We will solve for the coefficients
+	to the cubic function x(t), by solving the 3 sets of equations above using the points as 
 	boundary conditions.
 	
 	Consider points p1 and p2
@@ -617,15 +384,15 @@ algorithm 2:
 	
 algorithm 3:
 	
-	algorithm 3  is an atempt to fit the highest degree polynomial given
+	algorithm 3  is an attempt to fit the highest degree polynomial given
 	all the data (ie boundary conditions) we have at our disposal for 2 points.
 		
 	NOTE: For very large values of time the numerical limits of computing do not allow 
-	for satisfactory fits. The time vlaues could be normalize with respect to the first 
+	for satisfactory fits. The time values could be normalize with respect to the first 
 	point but from experimentation this results in a very poor fit to the velocity
-	and acceleration when compared to un-noramlized time values. 
+	and acceleration when compared to un-normalized time values. 
 		
-	The equaions of motion are:
+	The equations of motion are:
 		a(t) = a0 + b*t  + c*t^{2} + d*t^{3} +e*t^{4} +f*t^{5} g*t^{6}
 		v(t) = v0 + a0*t + b/2*t^{2} + c/3*t^{3} + d/4*t^{4} +e/5*t^{5} +f/6*t^{6} g/7*t^{7}
 		x(t) = x0 + v0*t + a0/2*t^{2} + b/6*t^{3} + c/12*t^{4} + d/20*t^{5} +e/30*t^{6} +f/42*t^{7} + g/56*t^{8}
@@ -639,6 +406,26 @@ algorithm 3:
 		v1 - v0 - a0*t1               = b/2*t1^{2} + c/3*t1^{3} + d/4*t1^{4} +e/5*t1^{5} +f/6*t1^{6} + g/7*t1^{7}
 		x1 - x0 - v0*t1 - a0/2*t1^{2} = b/6*t1^{3} + c/12*t1^{4} + d/20*t1^{5} +e/30*t1^{6} +f/42*t1^{7} + g/56*t1^{8}
 
+
+algorithm 4:
+	
+	Algorithm 4 is an attempt to use a least squares parameter optimization
+	to the position, velocity and acceleration function assuming they take the following 
+	form:
+		a(t) = a0 + b*t +c*t^2
+		v(t) = v0 + a0*t + (b/2)*t^2 + (c/3)*t^3
+		x(t) = x0 + v0*t + (a0/2)*t^2 + (b/6)*t^3 + (c/12)*t^4
+		
+	This would imply that the square difference equation would take the form:
+		R2 = sum{ ( Xi+Vi+Ai - [x(ti)+v(ti)+a(ti)] )^2 }
+		
+		Xi, Vi, Ai are the taxi data
+		
+		Using scipy.optimize.curve_fit whose  inputs are a function to fit "f",
+		time intervals to fit over "t" and data to fit to "y"
+		
+		f = x(ti)+y(ti)+a(ti)
+		y = Xi+Vi+Ai
 
 
 '''	
@@ -696,8 +483,16 @@ def smoothTrajectory(taxi,**kwargs):
 						totT = t[i]
 						funcsx = poly8Fit.algorithm3(x[i],x[i+1],vx[i],vx[i+1],ax[i],ax[i+1],t[i],t[i+1])
 						funcsy = poly8Fit.algorithm3(y[i],y[i+1],vy[i],vy[i+1],ay[i],ay[i+1],t[i],t[i+1])
+					elif algorithm == "alg4":
+						i +=2 #we are starting with the third element since the numerically 
+							  #computed acceleration is not well defined before that. 
+						totT = t[i]
+						n = 2 #the number of points to inlcude in the chi squared fit 
+						funcsx = myChi2Fit(x[i:i+n],vx[i:i+n],ax[i:i+n],t[i:i+n])
+						funcsy = myChi2Fit(y[i:i+n],vy[i:i+n],ay[i:i+n],t[i:i+n])
+
 					else:
-						raise Exception("algorithm not properly specified. PLease specify:\n alg1, alg2, or alg3")
+						raise Exception("algorithm not properly specified. PLease specify:\n alg1, alg2, alg3, or alg4")
 				
 				count = 0
 				while (totT<t[i+1]):
@@ -719,6 +514,7 @@ def smoothTrajectory(taxi,**kwargs):
 					count += 1
 					
 			except Exception as err:
+				traceback.print_exc()
 				print err
 				
 				errmsg  = "Note values corresponding to elements "+ \
@@ -731,6 +527,8 @@ def smoothTrajectory(taxi,**kwargs):
 						
 		
 	return Taxi.smoothTaxi(taxi.taxiID,smoothT,smoothX,smoothY,smoothVx,smoothVy,smoothAx,smoothAy)
+	
+	
 	
 '''
 The following computed the standard deviation of the distance intervals
@@ -933,7 +731,7 @@ Parameters:
 	
 returns indices: list of numbers
 	
-The following function finds and return the indices
+The following function finds and returns the indices
 within a given list x corresponding to the values in "values".
 Note that that values and x must be sorted in increasing order
 '''
