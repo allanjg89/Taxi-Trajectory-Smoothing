@@ -26,13 +26,13 @@ class poly3Fit:
 
 		'''
 		A try catch block is implemented here in the case
-		that a singuar matrix error arises
+		that a singular matrix error arises
 		'''
 		try:
 			x = solve(np.array(A),np.array(B))
 		except Exception as err:
 			print err
-			raise Exception("Smoothing unsuccesful. Values not determinant.")
+			raise Exception("Smoothing unsuccessful. Values not determinant.")
 		
 		self.x0 = x0
 		self.v0 = x[0]
@@ -49,7 +49,7 @@ class poly3Fit:
 		t2:number
 		
 	The following function does the fitting as described by smoothTrajectory
-	by solving for the coeficients of the polynomial x(t) through use of algorithm 1
+	by solving for the coefficients of the polynomial x(t) through use of algorithm 1
 
 	For algorithm 1:
 		
@@ -86,7 +86,7 @@ class poly3Fit:
 		deltaT:number
 			
 	The following function does the fitting as described by smoothTrajectory
-	by solving for the coeficients of the polynomials x(t), v(t) and a(t) 
+	by solving for the coefficients of the polynomials x(t), v(t) and a(t) 
 	through use of algorithm 2
 
 
