@@ -11,6 +11,7 @@ from datetime import datetime
 import time
 import pdb
 import traceback
+from scipy.interpolate import UnivariateSpline
 from fitFunctions import *
 
 
@@ -229,8 +230,23 @@ class Taxi:
 		prevI = 0
 		badPointIndices = []
 		badPointCount = 0
+		i = 1
+		initialBadCount = 0 
+		upperBadCount = 3
+		'''
+							#initialBadCount is a measure that is meant for the 
+							case where the first data point in the file is actually 
+							a bad point. Such a case could cause a miss 
+							classification of every other point in the 
+							file as bad. Thus by keeping count of how many 
+							bad points where registered at the beginning with 
+							respect to this first point one can set an upper 
+							bound which would cause the loop to restart with 
+							the next data point (i=1) in the file, essentially 
+							classifying the first data point as bad.
+		'''
 		
-		for i in range(1,len(x)):
+		while i < len(x):
 			currT = times[i]-times[0]
 			
 			if currT != t[prevI] and currT > t[prevI]:
@@ -249,14 +265,23 @@ class Taxi:
 					ay = dVy/dt**2
 					
 					if np.sqrt(ax**2+ay**2) < MAXACCELERATION:
+						initialBadCount = 0
 						t.append(currT); xF.append(x[i]); yF.append(y[i])
 						deltaT.append(dt); deltaX.append(dx); deltaY.append(dy)
 						velocityX.append(vx); velocityY.append(vy); deltaVx.append(dVx)
 						deltaVy.append(dVy); accelerationX.append(ax); accelerationY.append(ay)
 						prevI += 1
 			else:
+				initialBadCount +=1
 				badPointCount += 1
 				badPointIndices.append(i)
+			
+			if initialBadCount == upperBadCount:
+				i -= upperBadCount-1
+				initialBadCount = 0
+				badPointIndices = badPointIndices[0:len(badPointIndices)-upperBadCount+1]
+				badPointIndices.append(i-upperBadCount+1)
+			i+=1
 				
 				
 				
@@ -389,8 +414,10 @@ algorithm 3:
 		
 	NOTE: For very large values of time the numerical limits of computing do not allow 
 	for satisfactory fits. The time values could be normalize with respect to the first 
-	point but from experimentation this results in a very poor fit to the velocity
-	and acceleration when compared to un-normalized time values. 
+	point (i.e. t1 = t1-10; t0 ~= 0) but from experimentation this results in a very 
+	poor fit to the velocity and acceleration when compared to un-normalized time values. 
+	This poor fit when normalizing could be due to some error I failed to identify or
+	to the limited precision fo arithmetic operations done numerically.
 		
 	The equations of motion are:
 		a(t) = a0 + b*t  + c*t^{2} + d*t^{3} +e*t^{4} +f*t^{5} g*t^{6}
@@ -424,8 +451,8 @@ algorithm 4:
 		Using scipy.optimize.curve_fit whose  inputs are a function to fit "f",
 		time intervals to fit over "t" and data to fit to "y"
 		
-		f = x(ti)+y(ti)+a(ti)
-		y = Xi+Vi+Ai
+		f_i = x(ti)+y(ti)+a(ti)
+		y_i = Xi+Vi+Ai
 
 
 '''	
@@ -460,39 +487,40 @@ def smoothTrajectory(taxi,**kwargs):
 	#the inputed taxi object
 	if desiredDeltaT>=max(taxi.deltaT):
 		return taxi
+		
+	n = 2 #the number of points to inlcude in the chi squared fit in the case of algorithm 4
 
 	smoothT = []; smoothX = []; smoothY = []; smoothVx = []; smoothVy = []
 	smoothAx = []; smoothAy = []; 			
 	for i in range(len(x)-1):
 			
 			try:
-				if i<len(x)-3:
+				#if i<len(x)-3:
+				if algorithm == "alg1" and i<len(x)-3:
 					totT = t[i]
-					if algorithm == "alg1":
-						funcsx = poly3Fit.algorithm1(x[i],x[i+1],x[i+2],t[i],t[i+1],t[i+2])
-						funcsy = poly3Fit.algorithm1(y[i],y[i+1],y[i+2],t[i],t[i+1],t[i+2])
-					elif algorithm == "alg2":
-						i +=2 #we are starting with the third element since the numerically 
-							  #computed acceleration is not well defined before that. 
-						totT = t[i]
-						funcsx = poly3Fit.algorithm2(x[i],x[i+1],vx[i+1],ax[i+1],t[i+1])
-						funcsy = poly3Fit.algorithm2(y[i],y[i+1],vy[i+1],ay[i+1],t[i+1])
-					elif algorithm == "alg3":
-						i +=2 #we are starting with the third element since the numerically 
-							  #computed acceleration is not well defined before that. 
-						totT = t[i]
-						funcsx = poly8Fit.algorithm3(x[i],x[i+1],vx[i],vx[i+1],ax[i],ax[i+1],t[i],t[i+1])
-						funcsy = poly8Fit.algorithm3(y[i],y[i+1],vy[i],vy[i+1],ay[i],ay[i+1],t[i],t[i+1])
-					elif algorithm == "alg4":
-						i +=2 #we are starting with the third element since the numerically 
-							  #computed acceleration is not well defined before that. 
-						totT = t[i]
-						n = 2 #the number of points to inlcude in the chi squared fit 
-						funcsx = myChi2Fit(x[i:i+n],vx[i:i+n],ax[i:i+n],t[i:i+n])
-						funcsy = myChi2Fit(y[i:i+n],vy[i:i+n],ay[i:i+n],t[i:i+n])
+					funcsx = poly3Fit.algorithm1(x[i],x[i+1],x[i+2],t[i],t[i+1],t[i+2])
+					funcsy = poly3Fit.algorithm1(y[i],y[i+1],y[i+2],t[i],t[i+1],t[i+2])
+				elif algorithm == "alg2" and i<len(x)-2:
+					i +=2 #we are starting with the third element since the numerically 
+						  #computed acceleration is not well defined before that. 
+					totT = t[i]
+					funcsx = poly3Fit.algorithm2(x[i],x[i+1],vx[i+1],ax[i+1],t[i+1])
+					funcsy = poly3Fit.algorithm2(y[i],y[i+1],vy[i+1],ay[i+1],t[i+1])
+				elif algorithm == "alg3"and i<len(x)-2:
+					i +=2 #we are starting with the third element since the numerically 
+						  #computed acceleration is not well defined before that. 
+					totT = t[i]
+					funcsx = poly8Fit.algorithm3(x[i],x[i+1],vx[i],vx[i+1],ax[i],ax[i+1],t[i],t[i+1])
+					funcsy = poly8Fit.algorithm3(y[i],y[i+1],vy[i],vy[i+1],ay[i],ay[i+1],t[i],t[i+1])
+				elif algorithm == "alg4" and i<len(x)-(n+1):
+					i +=2 #we are starting with the third element since the numerically 
+						  #computed acceleration is not well defined before that. 
+					totT = t[i]
+					funcsx = myChi2Fit(x[i:i+n],vx[i:i+n],ax[i:i+n],t[i:i+n])
+					funcsy = myChi2Fit(y[i:i+n],vy[i:i+n],ay[i:i+n],t[i:i+n])
 
-					else:
-						raise Exception("algorithm not properly specified. PLease specify:\n alg1, alg2, alg3, or alg4")
+				else:
+					raise Exception("algorithm not properly specified. PLease specify:\n alg1, alg2, alg3, or alg4")
 				
 				count = 0
 				while (totT<t[i+1]):
@@ -527,6 +555,78 @@ def smoothTrajectory(taxi,**kwargs):
 						
 		
 	return Taxi.smoothTaxi(taxi.taxiID,smoothT,smoothX,smoothY,smoothVx,smoothVy,smoothAx,smoothAy)
+	
+
+'''
+Parameters:
+	taxi:Taxi Object
+Optional Parameters:
+	desiredDeltaT: number: specifies the time interval between 
+				   consecutive data points
+				
+Returns:
+	Taxi Object
+	scipy.interpolate.UnivariateSpline Object
+	scipy.interpolate.UnivariateSpline Object
+	
+Here an order three spline is fit to the x and y coordinates and let the 
+software determine the number of knots. The velocity and acceleration 
+are determined via numerical differentiation. (NOTE: the software has 
+built in methods that preform differentiation of a given order.)
+	
+
+The number of knots are selected until the following condition is met
+squared error < N where N is the number of points.
+
+\sqrt{(y_{i}-\hat{f}(x_{i}))^{2}} <= N
+
+'''
+
+
+def smoothingSplineTaxi(taxi,**kwargs):
+	degree = 3
+	sX = UnivariateSpline(taxi.times, taxi.x, s=degree)
+	sY = UnivariateSpline(taxi.times, taxi.y, s=degree)
+	init = 1E-14
+	
+	if "desiredDeltaT" in kwargs:
+		desiredDeltaT = kwargs["desiredDeltaT"]
+	else:
+		desiredDeltaT= np.mean(taxi.deltaT)/5.0
+	
+	smoothT = []; smoothX = []; smoothY = []; smoothVx = []; smoothVy = []
+	smoothAx = []; smoothAy = []; 			
+	for i in range(len(taxi.x)-1):
+		
+		totT = taxi.times[i]
+		
+		while (totT<taxi.times[i+1]):
+			x = sX(totT)
+			x2 = sX(totT+desiredDeltaT)
+			x3 = sX(totT+2*desiredDeltaT)
+			y = sY(totT)
+			y2 = sY(totT+desiredDeltaT)
+			y3 = sY(totT+2*desiredDeltaT)
+			vX = (x2-x)/desiredDeltaT 
+			vX2 =(x3-x2)/desiredDeltaT 
+			vY = (y2-y)/desiredDeltaT
+			vY2 = (y3-y2)/desiredDeltaT
+			aX = (vX2-vX)/desiredDeltaT
+			aY = (vY2-vY)/desiredDeltaT
+			 
+			smoothX.append(x)
+			smoothY.append(y)
+			smoothVx.append(vX)
+			smoothVy.append(vY)
+			smoothAx.append(aX)
+			smoothAy.append(aY)
+			smoothT.append(totT)
+			totT += desiredDeltaT
+			
+	return Taxi.smoothTaxi(taxi.taxiID,smoothT,smoothX,smoothY,smoothVx,smoothVy,smoothAx,smoothAy), sX, sY
+
+	
+	
 	
 	
 	
@@ -760,3 +860,6 @@ def findIndicesForValues(x,values):
 	
 	return indices
 
+
+taxi = Taxi.fromFile("./taxiData/1131.txt")
+print taxi.x[1:20]
