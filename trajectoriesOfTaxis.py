@@ -878,10 +878,6 @@ def findIndicesForValues(x,values):
 	return indices
 
 
-taxi = Taxi.fromFile("./taxiData/1131.txt")
-taxi2 = Taxi.fromPickle("./processedTaxis/pickledTaxi1131.plk")
 
-print taxi.x[0:10]
-print taxi2.x[0:10]
 
 
