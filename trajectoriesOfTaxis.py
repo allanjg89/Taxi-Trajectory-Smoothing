@@ -13,6 +13,7 @@ import pdb
 import traceback
 from scipy.interpolate import UnivariateSpline
 from fitFunctions import *
+import cPickle
 
 
 '''
@@ -73,6 +74,13 @@ class Taxi:
 		self.accelerationX = arrayOfValues[11]
 		self.accelerationY = arrayOfValues[12]
 		
+		#the following saves to pickle file for future loading purposes
+		file = open("./processedTaxis/pickledTaxi"+str(self.taxiID)+".plk","w")
+		cPickle.dump(self,file)
+		file.close()
+		
+	def __eq__(self, other) : 
+		return self.__dict__ == other.__dict__
 		
 		
 	
@@ -84,6 +92,15 @@ class Taxi:
 		times = [Taxi.convertDate(d) for d in times]
 		
 		return cls(Taxi.filterQuantities(taxiID,times,x,y,file))
+	
+	@classmethod
+	def fromPickle(cls,file):
+		try:
+			return cPickle.load(open(file,'r'))
+		except Exception as err:
+			traceback.print_exc()
+			print err
+
 		
 		
 	@classmethod	
@@ -862,4 +879,9 @@ def findIndicesForValues(x,values):
 
 
 taxi = Taxi.fromFile("./taxiData/1131.txt")
-print taxi.x[1:20]
+taxi2 = Taxi.fromPickle("./processedTaxis/pickledTaxi1131.plk")
+
+print taxi.x[0:10]
+print taxi2.x[0:10]
+
+
